@@ -154,5 +154,4 @@ This project demonstrates:
 
 ## 👤 Author
 
-Your Name
-GitHub: https://github.com/your-username
+Anupa Kuriakose
