@@ -1,0 +1,87 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  height: 54px;
+  backdrop-filter: blur(8px);
+}
+
+.searchWrap {
+  flex: 1;
+  max-width: 420px;
+  margin-left: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: #9c9a92;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 34px;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 0 32px 0 32px;
+  font-size: 13px;
+  background: #f8f7f4;
+  color: #1a1a18;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.clearBtn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9c9a92;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+/* Renamed to savedBtn for clean JS access */
+.savedBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #5f5e5a;
+  background: none;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.savedBtnActive {
+  background: #e6f1fb;
+  border-color: #b5d4f4;
+  color: #185fa5;
+}
+
+.badge {
+  background: #378ADD;
+  color: #fff;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
