@@ -4,34 +4,58 @@ import CategoryTabs from "./components/CategoryTabs";
 import ArticleList from "./components/ArticleList";
 import SavedSidebar from "./components/SavedSidebar";
 import { Article } from "./types/article";
-import styles from './App.module.css';
+import { fetchNewsByCategory, searchNews } from "./services/api";
 
 function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [saved, setSaved] = useState<Article[]>([]);
   const [category, setCategory] = useState("technology");
+  const [loading, setLoading] = useState(false);
 
+  // Fetch on load + category change
   useEffect(() => {
-    // TEMP dummy data
-    setArticles([
-      { title: "Tech News 1", description: "Desc 1" },
-      { title: "Tech News 2", description: "Desc 2" }
-    ]);
+    loadCategoryNews();
   }, [category]);
 
-  const handleSave = (article: Article) => {
-    setSaved((prev) => [...prev, article]);
+  const loadCategoryNews = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchNewsByCategory(category);
+      setArticles(data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
   };
 
-  const handleSearch = (query: string) => {
-    console.log("search:", query);
+  // Search
+  const handleSearch = async (query: string) => {
+    setLoading(true);
+    try {
+      const data = await searchNews(query);
+      setArticles(data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  // Save
+  const handleSave = (article: Article) => {
+    setSaved((prev) => {
+      const isAlreadySaved = prev.some((s)=> s.id === article.id);
+      if (isAlreadySaved) return prev.filter((s)=> s.id!== article.id);//remove 
+      return [...prev, article];//add 
+    });
   };
 
   return (
-    <div className={styles.App}>
+    <div style={{ padding: "20px" }}>
       <Header onSearch={handleSearch} savedCount={saved.length} />
 
       <CategoryTabs category={category} setCategory={setCategory} />
+
+      {loading && <p>Loading...</p>}
 
       <div style={{ display: "flex", gap: "20px" }}>
         <div style={{ flex: 3 }}>
