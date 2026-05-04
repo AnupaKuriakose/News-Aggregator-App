@@ -1,90 +1,83 @@
-import React, { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
+import { Article } from "./types/article";
 import Header from "./components/Header";
 import CategoryTabs from "./components/CategoryTabs";
 import ArticleList from "./components/ArticleList";
 import SavedSidebar from "./components/SavedSidebar";
-import { Article } from "./types/article";
-import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
-import styles from './App.module.css';
+import styles from "./App.module.css";
 
 function App() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [saved, setSaved] = useState<Article[]>([]);
+  const queryClient = useQueryClient();
   const [category, setCategory] = useState("technology");
-  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState<Article[]>([]);
+  const [searchResults, setSearchResults] = useState<Article[] | null>(null);
 
-  // Fetch on load + category change
+  const { data: articles = [], isLoading } = useQuery({
+    queryKey: ["news", category],
+    queryFn: () => fetchNewsByCategory(category),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  // Silent sentiment enrichment
   useEffect(() => {
-    loadCategoryNews();
-  }, [category]);
+    if (articles.length === 0) return;
+    if (articles.every(a => a.sentiment)) return; // already cached with sentiment
 
-  // Effect 2 — NEW, silent sentiment call
-useEffect(() => {
-  // don't run until articles are loaded
-  if (articles.length === 0) return;
+    console.log("Fetching sentiment for:", category);
 
-  // don't run if sentiment already exists on these articles
-  if (articles.every(a => a.sentiment)) return;
-
-  console.log("Fetching sentiment silently...");
-
-  classifySentiment(articles)
-    .then((labels) => {
-      // patch sentiment onto each article without refetching
-      setArticles(prev =>
-        prev.map((article, i) => ({
+    classifySentiment(articles)
+      .then((labels) => {
+        const enriched = articles.map((article, i) => ({
           ...article,
           sentiment: labels[i] as Article["sentiment"]
-        }))
-      );
-    })
-    .catch(err => {
-      // silent fail — badges just won't show, app still works
-      console.error("Sentiment failed:", err);
-    });
+        }));
+        // store enriched articles back into React Query cache
+        queryClient.setQueryData(["news", category], enriched);
+      })
+      .catch(err => console.error("Sentiment failed:", err));
 
-}, [category]); // runs when article count changes (new category loaded)
+  }, [articles]);
 
-  const loadCategoryNews = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchNewsByCategory(category);
-      setArticles(data);
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
-  };
-
-  // Search
   const handleSearch = async (query: string) => {
-    setLoading(true);
-    try {
-      const data = await searchNews(query);
-      setArticles(data);
-    } catch (err) {
-      console.error(err);
+    if (!query.trim()) {
+      setSearchResults(null); // clear search, go back to category feed
+      return;
     }
-    setLoading(false);
+    const data = await searchNews(query);
+    setSearchResults(data);
   };
 
-  // Save
   const handleSave = (article: Article) => {
     setSaved((prev) => {
       const isAlreadySaved = prev.some((s) => s.id === article.id);
-      if (isAlreadySaved) return prev.filter((s) => s.id !== article.id);//remove 
-      return [...prev, article];//add 
+      if (isAlreadySaved) return prev.filter((s) => s.id !== article.id);
+      return [...prev, article];
     });
   };
+
+  const handleCategoryChange = (newCategory: string) => {
+    setCategory(newCategory);
+    setSearchResults(null); // clear search when switching category
+  };
+
+  // search results take priority over category feed
+  const displayArticles = searchResults ?? articles;
 
   return (
     <div className={styles.app}>
       <Header onSearch={handleSearch} savedCount={saved.length} />
-      <CategoryTabs category={category} setCategory={setCategory} />
+      <CategoryTabs category={category} setCategory={handleCategoryChange} />
       <div className={styles.content}>
         <div className={styles.articles}>
-          {loading ? <p>Loading...</p> :
-            <ArticleList articles={articles} saved={saved} onSave={handleSave} />}
+          <ArticleList
+            articles={displayArticles}
+            saved={saved}
+            onSave={handleSave}
+            loading={isLoading}
+            category={category}
+          />
         </div>
         <div className={styles.feed}>
           <SavedSidebar saved={saved} />

@@ -10,6 +10,7 @@ app.use(express.json());
 const PORT = 5000;
 
 let savedArticles = [];
+const summaryCache = new Map();
 
 // GET
 app.get("/api/saved", (req, res) => {
@@ -41,7 +42,7 @@ app.get("/api/models", async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-  
+
   );
   const data = await response.json();
   res.json(data);
@@ -77,7 +78,7 @@ Return ONLY a JSON array in the same order. No explanation, no markdown, no code
 
 ${numbered}`;
     const response = await fetch(
-       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,7 +103,64 @@ ${numbered}`;
   }
 });
 
+app.post("/api/summarize", async (req, res) => {
+  const { title, description, url } = req.body;
 
+  // cache hit — skip Gemini
+  if (url && summaryCache.has(url)) {
+    console.log("Summary cache hit:", url);
+    return res.json({ data: { bullets: summaryCache.get(url) } });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.json({
+      data: {
+        bullets: [
+          `${title?.slice(0, 80)}...`,
+          "Add GEMINI_API_KEY to .env to enable real summaries.",
+          "Phase 2 feature.",
+        ]
+      }
+    });
+  }
+
+  const prompt = `Summarise this news article in exactly 3 bullet points.
+Each bullet must be under 15 words. Be concise and factual.
+Return ONLY the 3 bullets as a JSON array of strings. No markdown, no explanation.
+
+Title: ${title}
+Description: ${description}`;
+
+  try {
+    console.log("Summarize..............:");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+
+    const data = await response.json();
+    console.log("Summarize raw response:", JSON.stringify(data).slice(0, 200));
+
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const bullets = JSON.parse(cleaned);
+
+    // save to cache
+    if (url) summaryCache.set(url, bullets);
+
+    return res.json({ data: { bullets } });
+
+  } catch (err) {
+    console.error("Summarize error:", err.message);
+    return res.status(502).json({ error: "Gemini request failed" });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -17,19 +17,14 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  height: 12px;
 }
 
-.logoDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #378ADD;
-  display: inline-block;
-}
+
 
 .logoText {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight:600;
   color: #1a1a18;
   letter-spacing: -0.3px;
 }

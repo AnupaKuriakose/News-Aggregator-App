@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./Header.module.css";
+import { TbNews } from "react-icons/tb"; 
+const NewsIcon = TbNews as React.ElementType;
 
 type Props = {
   onSearch: (q: string) => void;
@@ -31,10 +33,10 @@ function Header({ onSearch, savedCount, onToggleSaved }: Props) {
 
   return (
     <header className={styles.header}>
-      <div className={styles.logo}>
-        <span className={styles.logoDot} />
-        <span className={styles.logoText}>NewsAgg</span>
-      </div>
+     <div className={styles.logo}>
+  <NewsIcon size={35} color="#378ADD" />
+  <span className={styles.logoText}>Newsly</span>
+</div>
 
       <div className={styles.searchWrap}>
         <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24"

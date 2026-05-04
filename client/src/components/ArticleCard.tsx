@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Article } from "../types/article";
 import styles from "./ArticleCard.module.css";
+import { summarizeArticle } from "../services/api";
 
 type Props = {
   article: Article;
@@ -22,25 +23,26 @@ function ArticleCard({ article, onSave, isSaved }: Props) {
     return `${Math.floor(h / 24)}d ago`;
   };
 
-  // const handleSummarise = async () => {
-  //   if (summary) { setSummary(null); return; }
-  //   setSummarising(true);
-  //   try {
-  //     const res = await fetch("/api/summarize", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ title: article.title, description: article.description }),
-  //     });
-  //     const data = await res.json();
-  //     setSummary(data.data.bullets);
-  //   } catch {
-  //     setSummary(["Could not generate summary. Please try again."]);
-  //   } finally {
-  //     setSummarising(false);
-  //   }
-  // };
+  const handleSummarise = async () => {
+    if (summary) { setSummary(null); return; }
+    setSummarising(true);
+    try {
+      const data = await summarizeArticle(article);
+      // const res = await fetch("/api/summarize", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ title: article.title, description: article.description }),
+      // });
+      // const data = await res.json();
+      setSummary(data);
+    } catch {
+      setSummary(["Could not generate summary. Please try again."]);
+    } finally {
+      setSummarising(false);
+    }
+  };
 
-  //Sentiment badge class
+ // Sentiment badge class
   const sentimentClass = article.sentiment
     ? styles[article.sentiment as "positive" | "neutral" | "negative"]
     : null;
@@ -101,6 +103,7 @@ function ArticleCard({ article, onSave, isSaved }: Props) {
           <button
             className={styles.btnSummarise}
             disabled={summarising}
+            onClick={handleSummarise}
           >
             <span className={styles.aiChip}>AI</span>
             {summarising ? "Summarising…" : summary ? "Hide" : "Summarise"}

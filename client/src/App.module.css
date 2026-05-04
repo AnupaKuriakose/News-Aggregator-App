@@ -21,6 +21,8 @@
 
 .articles{
   flex: 3 ;
+  padding: 20px;
+  background-color: #f8f7f4;
 }
 
 .content{

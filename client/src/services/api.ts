@@ -60,3 +60,21 @@ export async function classifySentiment(articles: Article[]): Promise<string[]> 
   const data = await res.json();
   return data.data.labels; // ["positive", "neutral", "negative", ...]
 }
+
+export async function summarizeArticle(article: Article)
+{
+
+  try {
+      const res = await fetch("http://localhost:5000/api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: article.title, description: article.description }),
+      });
+      const data = await res.json();
+       return data.data.bullets;
+    }
+    catch(error)
+    {
+
+    }
+}
