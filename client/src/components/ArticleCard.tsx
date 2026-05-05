@@ -28,12 +28,6 @@ function ArticleCard({ article, onSave, isSaved }: Props) {
     setSummarising(true);
     try {
       const data = await summarizeArticle(article);
-      // const res = await fetch("/api/summarize", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ title: article.title, description: article.description }),
-      // });
-      // const data = await res.json();
       setSummary(data);
     } catch {
       setSummary(["Could not generate summary. Please try again."]);
@@ -42,7 +36,7 @@ function ArticleCard({ article, onSave, isSaved }: Props) {
     }
   };
 
- // Sentiment badge class
+  // Sentiment badge class
   const sentimentClass = article.sentiment
     ? styles[article.sentiment as "positive" | "neutral" | "negative"]
     : null;
@@ -71,11 +65,14 @@ function ArticleCard({ article, onSave, isSaved }: Props) {
               <span>{timeAgo(article.publishedAt)}</span>
             </>
           )}
-          {article.sentiment && sentimentClass && (
+          {article.sentiment && sentimentClass ? (
             <span className={`${styles.sentimentBadge} ${sentimentClass}`}>
               {article.sentiment.charAt(0).toUpperCase() + article.sentiment.slice(1)}
             </span>
-          )}
+          ) : article.sentiment === undefined ? (
+            /* Only show this if your API explicitly says it is still calculating */
+            <span className={styles.sentimentPending}>Analyzing tone...</span>
+          ) : null}
         </div>
 
         {/* Title */}

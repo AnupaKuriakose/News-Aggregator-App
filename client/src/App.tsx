@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
 import { Article } from "./types/article";
 import Header from "./components/Header";
@@ -13,6 +13,7 @@ function App() {
   const [category, setCategory] = useState("technology");
   const [saved, setSaved] = useState<Article[]>([]);
   const [searchResults, setSearchResults] = useState<Article[] | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["news", category],
@@ -29,25 +30,36 @@ function App() {
 
     classifySentiment(articles)
       .then((labels) => {
+        // If API returns empty, treat them all as null or a default
         const enriched = articles.map((article, i) => ({
           ...article,
-          sentiment: labels[i] as Article["sentiment"]
+          // If labels[i] exists, use it. Otherwise, use null.
+          sentiment: labels[i] ? (labels[i] as Article["sentiment"]) : null
         }));
-        // store enriched articles back into React Query cache
+
         queryClient.setQueryData(["news", category], enriched);
       })
       .catch(err => console.error("Sentiment failed:", err));
 
   }, [articles]);
 
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults(null); // clear search, go back to category feed
-      return;
-    }
-    const data = await searchNews(query);
-    setSearchResults(data);
+  useEffect(() => {
+    //set up the timer 
+    const delayDebounceFn = setTimeout(() => {
+      if (!searchTerm.trim()) { setSearchTerm(''); setSearchResults(articles); return; }
+      const query = searchTerm.toLowerCase();
+      const filteredata = articles.filter((d) => d.title.toLowerCase().includes(query) || d.description.toLowerCase().includes(query));
+      setSearchResults(filteredata);
+    }, 500);
+
+    //clean up timer
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, articles])
+
+  const handleSearch = (query: string) => {
+    setSearchTerm(query);
   };
+
 
   const handleSave = (article: Article) => {
     setSaved((prev) => {
