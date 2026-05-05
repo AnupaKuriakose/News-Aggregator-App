@@ -152,6 +152,14 @@ This project demonstrates:
 
 ---
 
+## 📸 Screenshots
+
+Home page
+![alt text](image-1.png)
+
+
+---
+
 ## 👤 Author
 
 Anupa Kuriakose
