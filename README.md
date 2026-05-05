@@ -1,4 +1,4 @@
-# 📰 Focused News Aggregator
+# 📰 Newsly(Focused News Aggregator)
 
 A full-stack web application that aggregates news from multiple sources, allows users to search intelligently, generate AI-powered summaries, and save articles for later reading.
 
