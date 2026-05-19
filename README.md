@@ -148,7 +148,7 @@ This project demonstrates:
 
 ## 📌 Status
 
-🚧 In Progress
+🚧 Live Demo - click [here]( https://news-aggregator-app-a7rg.vercel.app/)
 
 ---
 
