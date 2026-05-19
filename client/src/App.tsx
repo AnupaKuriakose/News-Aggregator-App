@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, SetStateAction } from "react";
-import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
+import { useState, useEffect } from "react";
+import { classifySentiment, fetchNewsByCategory } from "./services/api";
 import { Article } from "./types/article";
 import Header from "./components/Header";
 import CategoryTabs from "./components/CategoryTabs";
@@ -41,7 +41,7 @@ function App() {
       })
       .catch(err => console.error("Sentiment failed:", err));
 
-  }, [articles]);
+  }, [articles, category, queryClient]);
 
   useEffect(() => {
     //set up the timer 

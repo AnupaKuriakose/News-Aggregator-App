@@ -1,7 +1,6 @@
 import styles from "./CategoryTabs.module.css";
 import { FaKeyboard, FaGlobe } from "react-icons/fa";
 import { MdTimeline } from "react-icons/md";
-import { ReactNode } from "react";
 import { IconType } from "react-icons"; 
 
 interface Tab {
