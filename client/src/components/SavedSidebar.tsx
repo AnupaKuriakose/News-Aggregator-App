@@ -63,9 +63,6 @@ function SavedSidebar({ saved, onRemove }: Props) {
         </div>
       )}
 
-      {saved.length > 0 && (
-        <p className={styles.footer}>Session only — refreshing clears this list.</p>
-      )}
     </aside>
   );
 }

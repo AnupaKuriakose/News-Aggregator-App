@@ -92,7 +92,7 @@ function App() {
           />
         </div>
         <div className={styles.feed}>
-          <SavedSidebar saved={saved} />
+          <SavedSidebar saved={saved} onRemove={handleSave}/>
         </div>
       </div>
     </div>

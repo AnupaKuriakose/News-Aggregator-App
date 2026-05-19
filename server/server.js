@@ -1,166 +1,127 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { sentimentCache, sentimentKey, summaryCache } from "./cache.js";
 
 const app = express();
 dotenv.config();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+const GNEWS_BASE = "https://gnews.io/api/v4";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
+
+// ── News ─────────────────────────────────────────────────────────────────────
+app.get("/api/news", async (req, res) => {
+  const category = req.query.category || "technology";
+  try {
+    const url = `${GNEWS_BASE}/top-headlines?category=${category}&lang=en&country=us&max=10&apikey=${process.env.GNEWS_API_KEY}`;
+    const data = await fetch(url).then(r => r.json());
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: "GNews request failed" });
+  }
+});
+
+app.get("/api/news/search", async (req, res) => {
+  const q = req.query.q || "";
+  if (!q.trim()) return res.status(400).json({ error: "Missing query param: q" });
+  try {
+    const url = `${GNEWS_BASE}/search?q=${encodeURIComponent(q)}&lang=en&max=10&apikey=${process.env.GNEWS_API_KEY}`;
+    const data = await fetch(url).then(r => r.json());
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: "GNews search failed" });
+  }
+});
+
+// ── Saved articles (in-memory) ────────────────────────────────────────────────
 let savedArticles = [];
-const summaryCache = new Map();
 
-// GET
-app.get("/api/saved", (req, res) => {
+app.get("/api/saved", (_req, res) => {
   res.json(savedArticles);
 });
 
-// POST
 app.post("/api/saved", (req, res) => {
-  const article = req.body;
-
-  const exists = savedArticles.find(a => a.title === article.title);
-  if (exists) {
+  if (!req.body?.title) return res.status(400).json({ error: "Article must have a title" });
+  if (savedArticles.find(a => a.title === req.body.title)) {
     return res.status(400).json({ message: "Already saved" });
   }
-
-  savedArticles.push(article);
+  savedArticles.push(req.body);
   res.json({ message: "Saved successfully" });
 });
 
-// DELETE
 app.delete("/api/saved/:title", (req, res) => {
-  const { title } = req.params;
-  savedArticles = savedArticles.filter(a => a.title !== title);
+  savedArticles = savedArticles.filter(a => a.title !== decodeURIComponent(req.params.title));
   res.json({ message: "Deleted successfully" });
 });
 
-//testing
-app.get("/api/models", async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-
-  );
-  const data = await response.json();
-  res.json(data);
-});
-//get sentiment for posts
-
+// ── Sentiment ─────────────────────────────────────────────────────────────────
 app.post("/api/sentiment", async (req, res) => {
   const { articles } = req.body;
+  if (!articles?.length) return res.status(400).json({ error: "No articles provided" });
 
-  console.log("1. Route hit");
-  console.log("2. Articles received:", articles?.length);
-  console.log("3. API key exists:", !!process.env.GEMINI_API_KEY);
+  const cacheKey = sentimentKey(articles);
+  if (sentimentCache.has(cacheKey)) return res.json({ data: { labels: sentimentCache.get(cacheKey) } });
 
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    console.log("4. No API key — returning mock");
+  if (!process.env.GEMINI_API_KEY) {
     const mock = ["positive", "neutral", "negative"];
-    const labels = articles.map((_, i) => mock[i % 3]);
-    return res.json({ data: { labels } });
+    return res.json({ data: { labels: articles.map((_, i) => mock[i % 3]) } });
   }
 
-  const numbered = articles
-    .map((a, i) => `${i + 1}. "${a.title}"`)
-    .join("\n");
-
-  console.log("4. Sending to Gemini:", numbered.slice(0, 100));
-
   try {
-
     const prompt = `Classify each headline as exactly one of: positive, neutral, negative.
 Return ONLY a JSON array in the same order. No explanation, no markdown, no code fences.
 
-${numbered}`;
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      }
-    );
+${articles.map((a, i) => `${i + 1}. "${a.title}"`).join("\n")}`;
 
-    const data = await response.json();
-    console.log("5. Gemini raw response:", JSON.stringify(data).slice(0, 300));
+    const data = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }).then(r => r.json());
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
-    console.log("6. Extracted text:", text);
-
-    const labels = JSON.parse(text);
-    console.log("7. Parsed labels:", labels);
-
-    return res.json({ data: { labels } });
-
+    const labels = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]");
+    sentimentCache.set(cacheKey, labels);
+    res.json({ data: { labels } });
   } catch (err) {
-    console.error("Gemini error:", err.message);
-    return res.status(502).json({ error: "Gemini request failed" });
+    res.status(502).json({ error: "Gemini request failed" });
   }
 });
 
+// ── Summarize ─────────────────────────────────────────────────────────────────
 app.post("/api/summarize", async (req, res) => {
   const { title, description, url } = req.body;
 
-  // cache hit — skip Gemini
-  if (url && summaryCache.has(url)) {
-    console.log("Summary cache hit:", url);
-    return res.json({ data: { bullets: summaryCache.get(url) } });
+  if (url && summaryCache.has(url)) return res.json({ data: { bullets: summaryCache.get(url) } });
+
+  if (!process.env.GEMINI_API_KEY) {
+    return res.json({ data: { bullets: [`${title?.slice(0, 80)}...`, "Add GEMINI_API_KEY to .env.", "Phase 2 feature."] } });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return res.json({
-      data: {
-        bullets: [
-          `${title?.slice(0, 80)}...`,
-          "Add GEMINI_API_KEY to .env to enable real summaries.",
-          "Phase 2 feature.",
-        ]
-      }
-    });
-  }
-
-  const prompt = `Summarise this news article in exactly 3 bullet points.
+  try {
+    const prompt = `Summarise this news article in exactly 3 bullet points.
 Each bullet must be under 15 words. Be concise and factual.
 Return ONLY the 3 bullets as a JSON array of strings. No markdown, no explanation.
 
 Title: ${title}
 Description: ${description}`;
 
-  try {
-    console.log("Summarize..............:");
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      }
-    );
+    const data = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }).then(r => r.json());
 
-    const data = await response.json();
-    console.log("Summarize raw response:", JSON.stringify(data).slice(0, 200));
-
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const bullets = JSON.parse(cleaned);
-
-    // save to cache
+    const bullets = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "[]");
     if (url) summaryCache.set(url, bullets);
-
-    return res.json({ data: { bullets } });
-
+    res.json({ data: { bullets } });
   } catch (err) {
-    console.error("Summarize error:", err.message);
-    return res.status(502).json({ error: "Gemini request failed" });
+    res.status(502).json({ error: "Gemini request failed" });
   }
 });
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
