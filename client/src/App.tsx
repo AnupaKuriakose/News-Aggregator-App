@@ -1,12 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { classifySentiment, fetchNewsByCategory } from "./services/api";
+import { useState, useEffect, SetStateAction, useMemo } from "react";
+import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
 import { Article } from "./types/article";
 import Header from "./components/Header";
 import CategoryTabs from "./components/CategoryTabs";
 import ArticleList from "./components/ArticleList";
 import SavedSidebar from "./components/SavedSidebar";
 import styles from "./App.module.css";
+import StatCard from "./components/StatCard";
+import { useSentimentStats } from "./hooks/useSentimentStats";
+import { Route, Routes } from "react-router-dom";
+import AnalyticsDashboard from "./components/AnalyticsDashboard";
 
 function App() {
   const queryClient = useQueryClient();
@@ -75,26 +79,65 @@ function App() {
   };
 
   // search results take priority over category feed
-  const displayArticles = searchResults ?? articles;
+ const displayArticles = useMemo(() => {
+  const q = searchTerm.trim().toLowerCase();
+  if (!q) return articles;
+  return articles.filter(
+    (a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)
+  );
+}, [articles, searchTerm]);
+
+  const stats = useSentimentStats(displayArticles);
+  const pct = (n: number, total: number) => total > 0 ? (Math.round((n / total)) * 100).toFixed(2) : 0;
 
   return (
-    <div className={styles.app}>
-      <Header onSearch={handleSearch} savedCount={saved.length} />
-      <CategoryTabs category={category} setCategory={handleCategoryChange} />
-      <div className={styles.content}>
-        <div className={styles.articles}>
-          <ArticleList
-            articles={displayArticles}
-            saved={saved}
-            onSave={handleSave}
-            loading={isLoading}
-            category={category}
-          />
-        </div>
-        <div className={styles.feed}>
-          <SavedSidebar saved={saved} onRemove={handleSave}/>
-        </div>
-      </div>
+      <div className={styles.app}>
+      <Header onSearch={setSearchTerm} savedCount={saved.length} />
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <div className={styles.statGrid}>
+                <StatCard
+                  title="Total Articles"
+                  value={stats.total}
+                  subtitle={searchTerm.trim() ? "matching search" : `in ${category}`}
+                />
+                <StatCard title="Positive" value={stats.positive} accent="success"
+                  subtitle={`${pct(stats.positive, stats.total)}% of total`} />
+                <StatCard title="Neutral" value={stats.neutral} accent="secondary"
+                  subtitle={`${pct(stats.neutral, stats.total)}% of total`} />
+                <StatCard title="Negative" value={stats.negative} accent="danger"
+                  subtitle={`${pct(stats.negative, stats.total)}% of total`} />
+              </div>
+
+              <CategoryTabs
+                category={category}
+                setCategory={(c: string) => setCategory(c)}
+              />
+
+              <div className={styles.content}>
+                <div className={styles.articles}>
+                  <ArticleList
+                    articles={displayArticles}
+                    saved={saved}
+                    onSave={handleSave}
+                    loading={isLoading}
+                    category={category}
+                  />
+                </div>
+                <div className={styles.feed}>
+                  <SavedSidebar saved={saved} />
+                </div>
+              </div>
+            </>
+          }
+        />
+        <Route path="/analytics" element={<AnalyticsDashboard />} />
+      </Routes>
+ 
     </div>
   );
 }

@@ -30,3 +30,9 @@
   gap: 20px;
   margin: 12px;
 }
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 0 24px; /* match whatever side padding your page uses */
+}

@@ -20,7 +20,20 @@
   height: 12px;
 }
 
+.nav { display: flex; gap: 4px; }
 
+.navLink {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.navLink:hover { background: #f3f4f6; color: #111827; }
+
+.navLinkActive { background: #eaf3fc; color: #378ADD; font-weight: 600; }
 
 .logoText {
   font-size: 22px;
