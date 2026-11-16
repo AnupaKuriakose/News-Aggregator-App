@@ -1,0 +1,22 @@
+.card {
+  background: var(--color-surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.title, .value, .subtitle {
+  border-radius: 4px;
+  background: linear-gradient(90deg, #eee 25%, #f6f6f6 50%, #eee 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+.title { height: 14px; width: 50%; }
+.value { height: 32px; width: 35%; }
+.subtitle { height: 12px; width: 60%; }
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}

@@ -8,13 +8,20 @@ type Props = {
 
 function SavedSidebar({ saved, onRemove }: Props) {
   return (
-    <aside className={styles.sidebar}>
-      {/* Header */}
+    <aside className={styles.sidebar} aria-label="Reading list">
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-            style={{ color: "#378ADD" }}>
+          <svg
+            className={styles.bookmarkIcon}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
           </svg>
           <span className={styles.headerTitle}>Reading list</span>
@@ -24,22 +31,27 @@ function SavedSidebar({ saved, onRemove }: Props) {
         </div>
       </div>
 
-      {/* Empty state */}
       {saved.length === 0 && (
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>🔖</div>
           <p className={styles.emptyText}>No saved articles yet</p>
-          <p className={styles.emptyHint}>Hit Save on any article to add it here.</p>
+          <p className={styles.emptyHint}>
+            Hit Save on any article to add it here.
+          </p>
         </div>
       )}
 
-      {/* Saved list */}
       {saved.length > 0 && (
         <div className={styles.list}>
-          {saved.map((a, i) => (
-            <div key={i} className={styles.item}>
+          {saved.map((a) => (
+            <div key={a.url} className={styles.item}>
               <div className={styles.itemBody}>
-                <a href={a.url} target="_blank" rel="noreferrer">
+                <a
+                  className={styles.itemLink}
+                  href={a.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <p className={styles.itemTitle}>{a.title}</p>
                 </a>
                 {a.source && (
@@ -48,12 +60,21 @@ function SavedSidebar({ saved, onRemove }: Props) {
               </div>
               {onRemove && (
                 <button
+                  type="button"
                   className={styles.removeBtn}
                   onClick={() => onRemove(a)}
                   aria-label="Remove from saved"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -62,7 +83,6 @@ function SavedSidebar({ saved, onRemove }: Props) {
           ))}
         </div>
       )}
-
     </aside>
   );
 }

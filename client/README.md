@@ -1,119 +1,252 @@
-🎯 Phase 1: Requirements (MVP)
-🟢 Goal
+# Newsly
 
-Build a working frontend that:
+A news aggregator built with React and Express. It fetches headlines by category, classifies each one as positive, neutral or negative with Gemini, and can summarise any article into three bullet points. An Analytics tab is being built on top of the sentiment data.
 
-- Fetches news
-- Displays articles
-- Allows basic search
-- Shows category-based results
+---
 
-📌 Functional Requirements
+## Status at a glance
 
-🟢 1. Initial Load
-Fetch articles automatically
-Default category:
-technology (recommended)
-🟢 2. Category Switching
-Buttons:
-Tech
-Finance
-General
-Clicking → fetch new articles
-1. Categories
-User can select:
-Technology
-Finance (business)
-General
+| Area | Status |
+|------|--------|
+| Category feed, search, article cards | Done |
+| AI sentiment per article (server-cached) | Done |
+| AI summarise button (server-cached) | Done |
+| GNews proxied through the backend | Done |
+| Navbar with Home and Analytics routes | Done |
+| Sentiment summary cards (`StatCard` + `useSentimentStats`) | Done on Home, moving to Analytics |
+| Saved articles | Client state only; server endpoints exist but are not wired in yet |
+| Analytics charts and ranking | Next sprint |
 
-2. Search
-User enters keyword
-App fetches related news
-3. Article List
+---
 
-Each article should display:
+## What changed since Phase 1
 
-Title
-Description
-Source (optional)
-Buttons:
-Save (UI only for now)
-Summarize (placeholder)
+Phase 1 was a frontend-only MVP. These items were originally out of scope and are now in:
 
-4. Basic UI States
-Loading state
-Empty state (“No results found”)
+| Originally out of scope | Now |
+|-------------------------|-----|
+| AI summary | Live via `POST /api/summarize` (Gemini, cached by URL) |
+| Backend / database | Express server. Saved articles are in memory by default; a MongoDB (Mongoose) variant is available |
+| Smart sentiment search | Sentiment is classified per headline; sentiment filtering is on the backlog |
+| Authentication | Still out of scope |
 
-❌ Out of Scope (Phase 1)
-AI summary
-Backend/database
-Authentication
-Smart sentiment search
+Other changes:
 
-Folder Structure
-client/src/
-├── components/
-│   ├── ArticleCard.tsx       # Individual article — title, description, Save + AI Summarise buttons
-│   ├── ArticleList.tsx       # Renders the list of ArticleCard components
-│   ├── CategoryTabs.tsx      # technology / business / general tab buttons
-│   ├── Header.tsx            # App title, search input, Saved badge
-│   ├── Header.module.css     # Scoped styles for Header
-│   └── SavedSidebar.tsx      # Reading list panel (right side)
-│
-├── services/
-│   └── api.ts                # All axios calls — fetchNews, saveArticle, summarise etc.
-│
-├── types/
-│   └── article.ts            # Article, SavedArticle, NewsCategory type definitions
-│
-├── App.tsx                   # Root component — wires everything together
-├── App.module.css            # Scoped styles for App layout
-├── index.css                 # Global reset and base styles
-├── index.tsx                 # React DOM entry point
-└── react-app-env.d.ts        # CRA type declarations
+- The GNews API key no longer lives in the browser. The client calls the Express backend, which calls GNews.
+- The client reads its API address from `REACT_APP_API_BASE_URL`.
+- The app now has routing (`/` and `/analytics`) and a nav in the header.
+- Search is derived data (`useMemo`) instead of state plus a second debounce, so counts always match what is on screen.
 
-Component Responsibilities
-Header
+---
 
-Displays the app title and search input
-Shows Saved (n) badge — count updates as user saves articles
-Passes search query up to App.tsx via onSearch prop
+## Architecture
 
-CategoryTabs
+```
+Browser (React, CRA)
+   |
+   |  REACT_APP_API_BASE_URL
+   v
+Express server
+   |-- /api/news, /api/news/search  -->  GNews
+   |-- /api/sentiment               -->  Gemini  (cache: joined headlines)
+   |-- /api/summarize               -->  Gemini  (cache: article URL)
+   '-- /api/saved                   -->  in-memory array, or MongoDB via index.mongo.js
+```
 
-Three buttons: technology, business, general
-Clicking a tab calls onCategoryChange in App.tsx, which triggers a new API fetch
-Active tab is highlighted
+Both caches are in-memory `Map`s and reset when the server restarts.
 
-ArticleList
+---
 
-Receives the articles array and renders an ArticleCard for each
-Handles loading state and empty state
+## Folder structure
 
-ArticleCard
+```
+client/
+├── vercel.json                    # SPA rewrite so /analytics survives a refresh
+└── src/
+    ├── components/
+    │   ├── ArticleCard.tsx        # Title, description, Save and AI Summarise buttons
+    │   ├── ArticleList.tsx        # Renders ArticleCard list, loading and empty states
+    │   ├── CategoryTabs.tsx       # technology / business / general tabs
+    │   ├── Header.tsx             # Logo, Home/Analytics nav, search, Saved badge
+    │   ├── Header.module.css
+    │   ├── SavedSidebar.tsx       # Reading list panel
+    │   ├── StatCard.tsx           # Reusable KPI tile (title, value, subtitle, accent)
+    │   └── StatCard.module.css
+    ├── hooks/
+    │   └── useSentimentStats.ts   # Pure derived data: counts per sentiment, memoised
+    ├── pages/
+    │   ├── AnalyticsDashboard.tsx # Analytics route
+    │   └── AnalyticsDashboard.module.css
+    ├── services/
+    │   └── api.ts                 # All HTTP calls to the Express backend
+    ├── types/
+    │   └── article.ts             # Article type definitions
+    ├── App.tsx                    # Owns shared state and defines the routes
+    ├── App.module.css
+    ├── index.css
+    ├── index.tsx                  # Entry point, wraps App in BrowserRouter
+    └── react-app-env.d.ts
 
-Displays title, description, source, and age
-Save button — calls onSave prop, updates reading list in App.tsx
-AI Summarise button — calls POST /api/summarize via services/api.ts, shows bullet points inline
+server/
+├── index.js                       # Default server: all routes, saved articles in memory
+├── index.mongo.js                 # Same routes, saved articles in MongoDB (Mongoose)
+├── db.js                          # Mongo connection (used by index.mongo.js only)
+├── cache.js                       # Sentiment and summary caches
+├── models/Article.js              # Mongoose model (index.mongo.js only)
+└── .env                           # Keys, never committed
+```
 
-SavedSidebar
+---
 
-Shown on the right when user has saved articles
-Lists saved article titles with a remove option
-Receives saved array and onRemove from App.tsx
+## Component responsibilities
 
+**Header** shows the logo, the Home and Analytics `NavLink`s, the search box and the Saved badge. It reports search text upward through `onSearch`.
 
-Data Flow
-App.tsx
-  │
-  ├── category state → CategoryTabs (controls which tab is active)
-  ├── query state    → Header (search input)
-  ├── articles state → ArticleList → ArticleCard[]
-  └── saved state    → SavedSidebar
-                        ArticleCard (isSaved prop)
-All state lives in App.tsx. Components are stateless where possible and communicate via props.
+**CategoryTabs** renders the three category buttons and highlights the active one.
 
-Services
-services/api.ts
-All backend calls go through here — no axios calls scattered in components.
-FunctionMethodEndpointDescriptionfetchNews(category, query?)GET/api/newsFetch articles by category or keywordsaveArticle(article)POST/api/savedAdd article to reading listremoveSaved(id)DELETE/api/saved/:idRemove from reading listsummariseArticle(title, desc)POST/api/summarizeGet 3 AI bullet pointsclassifySentiment(titles)POST/api/sentimentBatch sentiment labels (Phase 2)
+**ArticleList / ArticleCard** render the feed. A card has Save and AI Summarise buttons; Summarise calls `POST /api/summarize` and shows the bullets inline.
+
+**SavedSidebar** lists saved article titles.
+
+**StatCard** is a presentational tile with no logic. Props: `title`, `value`, optional `subtitle`, optional `accent` (`primary`, `secondary`, `success`, `warning`, `danger`).
+
+**useSentimentStats(articles)** takes one array and returns `{ total, positive, neutral, negative, pending }` from a single pass inside `useMemo`. `pending` counts articles whose sentiment has not arrived yet, so the four counts always add up to `total`. The same hook serves the feed now and the Analytics and Articles pages later.
+
+**AnalyticsDashboard** is the `/analytics` page. Currently a placeholder.
+
+---
+
+## Data flow
+
+```
+App.tsx (shared state: category, saved, searchTerm, news query)
+  |
+  |-- Header          <- onSearch, savedCount; renders nav
+  |
+  '-- Routes
+        |-- "/"          -> StatCards (via useSentimentStats)
+        |                   CategoryTabs, ArticleList -> ArticleCard[], SavedSidebar
+        '-- "/analytics" -> AnalyticsDashboard
+```
+
+State stays in `App` for now. If the Articles tab and Analytics page need more of it, it moves to context or dedicated hooks.
+
+---
+
+## API
+
+### Backend endpoints
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/api/news?category=` | Top headlines from GNews |
+| GET | `/api/news/search?q=` | GNews search |
+| POST | `/api/sentiment` | Body `{ articles: [{ title }] }`, returns `{ data: { labels } }`; cached |
+| POST | `/api/summarize` | Body `{ title, description, url }`, returns `{ data: { bullets } }`; cached |
+| GET | `/api/saved` | All saved articles |
+| POST | `/api/saved` | Save one; 400 if the title already exists |
+| DELETE | `/api/saved/:title` | Remove by URL-encoded title |
+
+### Client service functions (`services/api.ts`)
+
+| Function | Calls |
+|----------|-------|
+| `fetchNewsByCategory(category)` | `GET /api/news` |
+| `searchNews(query)` | `GET /api/news/search` (not used by the UI yet; search filters loaded articles on the client) |
+| `classifySentiment(articles)` | `POST /api/sentiment` |
+| `summarizeArticle(article)` | `POST /api/summarize` |
+| `getSavedArticles()`, `saveArticle()`, `deleteArticle(title)` | `/api/saved` (written, not wired into `App` yet) |
+
+---
+
+## Running locally
+
+```bash
+# Terminal 1
+cd server
+npm install
+npm run dev            # in-memory saved articles
+# npm run dev:mongo    # MongoDB variant, needs MONGODB_URI
+
+# Terminal 2
+cd client
+npm install
+npm start
+```
+
+`server/.env`
+```
+PORT=5000
+GNEWS_API_KEY=...
+GEMINI_API_KEY=...       # optional, mock labels and summaries without it
+MONGODB_URI=...          # only for index.mongo.js
+```
+
+`client/.env`
+```
+REACT_APP_API_BASE_URL=http://localhost:5000
+```
+
+Before pushing, run `$env:CI="true"; npm run build` (PowerShell) or `CI=true npm run build`. Vercel treats lint warnings as errors.
+
+---
+
+## Deployment
+
+- **Client:** Vercel, root directory `client`, Create React App preset, env var `REACT_APP_API_BASE_URL`. `client/vercel.json` rewrites all paths to `index.html` so refreshing `/analytics` works.
+- **Server:** Render (or similar), root directory `server`, start command `npm start`. Free tier sleeps after about 15 minutes idle, so the first request can take around 30 seconds.
+
+---
+
+## Tickets
+
+### Foundation (completed before Sprint 1)
+
+| Ticket | Description |
+|--------|-------------|
+| NEWSLY-001 | Move GNews calls to the Express backend, remove the key from the client |
+| NEWSLY-002 | Cache sentiment results on the server |
+| NEWSLY-003 | Server variants: default in-memory `index.js` and optional `index.mongo.js`, switched by npm script |
+| NEWSLY-004 | Client API base URL from `REACT_APP_API_BASE_URL` |
+| NEWSLY-005 | CI-clean build: remove unused imports, fix `useEffect` dependencies |
+| NEWSLY-006 | Search as derived data, remove the second debounce |
+
+### Sprint 1: Analytics (in progress)
+
+| Ticket | Description | Status |
+|--------|-------------|--------|
+| NEWSLY-101 | Analytics route and nav item (`react-router-dom`, `NavLink`s, `vercel.json` rewrite) | Done |
+| NEWSLY-102 | Reusable `StatCard` component | Done |
+| NEWSLY-103 | `useSentimentStats` hook and summary cards | Done on Home. Moving the cards to the Analytics page across all categories is the remaining part |
+
+### Next sprint (finish Sprint 1)
+
+| Ticket | Description | Acceptance |
+|--------|-------------|------------|
+| NEWSLY-103 (remainder) | Show the summary cards on `/analytics` using articles from all three categories | Counts update as sentiment loads; no extra API calls beyond one per category |
+| NEWSLY-104 | Sentiment distribution bar chart per category (recharts) | Chart has an `aria-label`; sentiment is conveyed by shape and colour, not colour alone |
+| NEWSLY-105 | Category ranking by share of positive articles | Handles zero-article categories |
+| NEWSLY-106 | Skeleton loaders for the analytics section | No layout shift when data arrives |
+| NEWSLY-107 | Error boundary around the analytics page | A chart crash shows a fallback, not a blank screen |
+| NEWSLY-108 *(proposed)* | Data hook that loads all three categories and attaches sentiment, so the Analytics page can reuse the logic now inside `App` | `App` and Analytics share one hook |
+| NEWSLY-109 *(proposed)* | Move percentage calculation into `useSentimentStats` | Every screen formats percentages the same way; no `NaN` when total is 0 |
+| NEWSLY-110 *(proposed)* | Wire saved articles to `/api/saved` so the reading list survives a refresh | Saving and removing persists |
+| NEWSLY-111 *(proposed)* | Sentiment filter on the feed (positive, neutral, negative) | Filter composes with category and search |
+
+### Later sprints
+
+| Sprint | Theme | Outline |
+|--------|-------|---------|
+| 2 | Better search | Natural-language queries, topic and sentiment extraction, sorting, date filters, better empty and error states |
+| 3 | Ask Newsly | Question-and-answer panel, retrieve relevant articles, grounded Gemini answer with source links |
+| 4 | Polish | Automated tests, responsive layout, screenshots and architecture diagram, README refresh, demo deployment |
+
+---
+
+## Known limitations
+
+- Saved articles live in React state, so they reset on refresh. The server endpoints exist but are not connected yet (NEWSLY-110).
+- Server caches and the default saved-articles store are in memory and reset on restart. Redis and MongoDB are the production answers.
+- GNews returns up to 10 articles per request and the app has no pagination.
+- The Analytics page currently has no content beyond a placeholder.
+- Search filters the articles already loaded for the current category. It does not query GNews.

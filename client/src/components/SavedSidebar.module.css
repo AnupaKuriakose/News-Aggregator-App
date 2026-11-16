@@ -1,25 +1,24 @@
 .sidebar {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
-  border-left: 0.5px solid rgba(0, 0, 0, 0.1);
-  background: #ffffff;
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 100px; /* below header + tabs */
-  max-height: calc(100vh - 120px);
+  top: 76px; /* clears the sticky top bar */
+  max-height: calc(100vh - 100px);
   overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  border: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .headerLeft {
@@ -28,25 +27,29 @@
   gap: 7px;
 }
 
+.bookmarkIcon {
+  color: var(--color-accent);
+}
+
 .headerTitle {
   font-size: 13px;
   font-weight: 600;
-  color: #1a1a18;
+  color: var(--color-text);
 }
 
 .count {
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
   font-size: 11px;
   font-weight: 600;
-  background: #e6f1fb;
-  color: #185fa5;
-  padding: 1px 6px;
-  border-radius: 8px;
 }
 
 .list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .item {
@@ -54,12 +57,16 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px 16px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border);
   transition: background 0.1s;
 }
 
+.item:last-child {
+  border-bottom: none;
+}
+
 .item:hover {
-  background: #fafaf8;
+  background: var(--color-surface-alt);
 }
 
 .itemBody {
@@ -67,81 +74,94 @@
   min-width: 0;
 }
 
-.itemTitle {
-  font-size: 12px;
-  font-weight: 500;
-  color: #1a1a18;
-  line-height: 1.45;
-  margin: 0 0 4px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.itemLink {
+  color: inherit;
+  text-decoration: none;
 }
 
-.itemTitle:hover {
-  color: #185fa5;
+.itemTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin: 0 0 4px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.itemLink:hover .itemTitle {
+  color: var(--color-accent);
 }
 
 .itemSource {
   font-size: 11px;
-  color: #9c9a92;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .removeBtn {
-  background: none;
-  border: none;
-  color: #b4b2a9;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   flex-shrink: 0;
   margin-top: 1px;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
   transition: color 0.15s;
 }
 
 .removeBtn:hover {
-  color: #993C1D;
+  color: var(--color-danger);
 }
 
-/* Empty state */
+.removeBtn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* ── Empty state ──────────────────────────────────────── */
 .empty {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
   gap: 8px;
+  padding: 28px 24px;
   text-align: center;
 }
 
 .emptyIcon {
-  font-size: 28px;
-  opacity: 0.3;
   margin-bottom: 4px;
+  font-size: 28px;
+  opacity: 0.4;
 }
 
 .emptyText {
+  margin: 0;
   font-size: 13px;
   font-weight: 500;
-  color: #5f5e5a;
-  margin: 0;
+  color: var(--color-text-secondary);
 }
 
 .emptyHint {
-  font-size: 12px;
-  color: #9c9a92;
   margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
-.footer {
-  font-size: 11px;
-  color: #b4b2a9;
-  text-align: center;
-  padding: 10px 16px;
-  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
-  flex-shrink: 0;
+/* Narrow screens: reading list drops below the feed */
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 100%;
+    position: static;
+    max-height: none;
+  }
 }

@@ -1,19 +1,23 @@
 import React, { useState, useRef, useEffect } from "react";
+import { TbMenu2 } from "react-icons/tb";
 import styles from "./Header.module.css";
-import { TbNews } from "react-icons/tb";
-import { NavLink } from 'react-router-dom';
-const NewsIcon = TbNews as React.ElementType;
 
+const MenuIcon = TbMenu2 as React.ElementType;
 
 type Props = {
   onSearch: (q: string) => void;
   savedCount: number;
   onToggleSaved?: () => void;
+  onMenuClick?: () => void;
 };
 
-function Header({ onSearch, savedCount, onToggleSaved }: Props) {
+function Header({ onSearch, savedCount, onToggleSaved, onMenuClick }: Props) {
   const [inputValue, setInputValue] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric",
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -35,30 +39,11 @@ function Header({ onSearch, savedCount, onToggleSaved }: Props) {
 
   return (
     <header className={styles.header}>
-      <div className={styles.logo}>
-        <NewsIcon size={35} color="#378ADD" />
-        <span className={styles.logoText}>Newsly</span>
-      </div>
+      <button type="button" className={styles.menuBtn} onClick={onMenuClick} aria-label="Open menu">
+        <MenuIcon size={22} />
+      </button>
 
-<nav className={styles.nav}>
-  <NavLink
-    to="/"
-    end
-    className={({ isActive }) =>
-      isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-    }
-  >
-    Home
-  </NavLink>
-  <NavLink
-    to="/analytics"
-    className={({ isActive }) =>
-      isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-    }
-  >
-    Analytics
-  </NavLink>
-</nav>
+      <span className={styles.date}>{today}</span>
 
       <div className={styles.searchWrap}>
         <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24"
@@ -75,9 +60,7 @@ function Header({ onSearch, savedCount, onToggleSaved }: Props) {
           onChange={handleChange}
         />
         {inputValue && (
-          <button className={styles.clearBtn} onClick={handleClear} aria-label="Clear">
-            ×
-          </button>
+          <button className={styles.clearBtn} onClick={handleClear} aria-label="Clear">×</button>
         )}
       </div>
 

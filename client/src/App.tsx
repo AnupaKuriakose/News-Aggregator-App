@@ -1,125 +1,77 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, SetStateAction, useMemo } from "react";
-import { classifySentiment, fetchNewsByCategory, searchNews } from "./services/api";
+import { useMemo, useState } from "react";
+import { Route, Routes } from "react-router-dom";
 import { Article } from "./types/article";
-import Header from "./components/Header";
 import CategoryTabs from "./components/CategoryTabs";
 import ArticleList from "./components/ArticleList";
 import SavedSidebar from "./components/SavedSidebar";
-import styles from "./App.module.css";
-import StatCard from "./components/StatCard";
-import { useSentimentStats } from "./hooks/useSentimentStats";
-import { Route, Routes } from "react-router-dom";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Layout from "./components/Layout";
+import { useNewsWithSentiment } from "./hooks/useNewsWithSentiment";
+import styles from "./App.module.css";
 
 function App() {
-  const queryClient = useQueryClient();
   const [category, setCategory] = useState("technology");
   const [saved, setSaved] = useState<Article[]>([]);
-  const [searchResults, setSearchResults] = useState<Article[] | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: articles = [], isLoading } = useQuery({
-    queryKey: ["news", category],
-    queryFn: () => fetchNewsByCategory(category),
-    staleTime: 24 * 60 * 60 * 1000,
-  });
+  // The hook owns fetching AND sentiment, so no enrichment effect is needed here
+  const { byCategory, isLoading } = useNewsWithSentiment([category]);
+  const articles = useMemo(
+    () => byCategory[category] ?? [],
+    [byCategory, category]
+  );
+  const HEADINGS: Record<string, { title: string; tagline: string }> = {
+  technology: { title: "The Tech Brief", tagline: "What's shaping the industry" },
+  business: { title: "Money & Markets", tagline: "Business and finance headlines" },
+  general: { title: "Today's Headlines", tagline: "The stories people are talking about" },
+};
 
-  // Silent sentiment enrichment
-  useEffect(() => {
-    if (articles.length === 0) return;
-    if (articles.every(a => a.sentiment)) return; // already cached with sentiment
+  // Search is derived data, not state
+  const displayArticles = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return articles;
+    return articles.filter(
+      (a) =>
+        a.title.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q)
+    );
+  }, [articles, searchTerm]);
 
-    console.log("Fetching sentiment for:", category);
-
-    classifySentiment(articles)
-      .then((labels) => {
-        // If API returns empty, treat them all as null or a default
-        const enriched = articles.map((article, i) => ({
-          ...article,
-          // If labels[i] exists, use it. Otherwise, use null.
-          sentiment: labels[i] ? (labels[i] as Article["sentiment"]) : null
-        }));
-
-        queryClient.setQueryData(["news", category], enriched);
-      })
-      .catch(err => console.error("Sentiment failed:", err));
-
-  }, [articles, category, queryClient]);
-
-  useEffect(() => {
-    //set up the timer 
-    const delayDebounceFn = setTimeout(() => {
-      if (!searchTerm.trim()) { setSearchTerm(''); setSearchResults(articles); return; }
-      const query = searchTerm.toLowerCase();
-      const filteredata = articles.filter((d) => d.title.toLowerCase().includes(query) || d.description.toLowerCase().includes(query));
-      setSearchResults(filteredata);
-    }, 500);
-
-    //clean up timer
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, articles])
-
-  const handleSearch = (query: string) => {
-    setSearchTerm(query);
-  };
-
-
+  // Toggles: saves if new, removes if already saved
   const handleSave = (article: Article) => {
     setSaved((prev) => {
-      const isAlreadySaved = prev.some((s) => s.id === article.id);
-      if (isAlreadySaved) return prev.filter((s) => s.id !== article.id);
-      return [...prev, article];
+      const already = prev.some((s) => s.id === article.id);
+      return already
+        ? prev.filter((s) => s.id !== article.id)
+        : [...prev, article];
     });
   };
 
-  const handleCategoryChange = (newCategory: string) => {
-    setCategory(newCategory);
-    setSearchResults(null); // clear search when switching category
-  };
+const trimmed = searchTerm.trim();
+const preset = HEADINGS[category] ?? {
+  title: "Latest News",
+  tagline: "Fresh from the newsroom",
+};
 
-  // search results take priority over category feed
- const displayArticles = useMemo(() => {
-  const q = searchTerm.trim().toLowerCase();
-  if (!q) return articles;
-  return articles.filter(
-    (a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)
-  );
-}, [articles, searchTerm]);
-
-  const stats = useSentimentStats(displayArticles);
-  const pct = (n: number, total: number) => total > 0 ? (Math.round((n / total)) * 100).toFixed(2) : 0;
+const title = trimmed ? `Results for “${trimmed}”` : preset.title;
+const tagline = trimmed
+  ? `${displayArticles.length} matching ${displayArticles.length === 1 ? "article" : "articles"}`
+  : `${articles.length} stories · ${preset.tagline}`;
 
   return (
-      <div className={styles.app}>
-      <Header onSearch={setSearchTerm} savedCount={saved.length} />
-
+    <Layout onSearch={setSearchTerm} savedCount={saved.length}>
       <Routes>
         <Route
           path="/"
           element={
             <>
-              <div className={styles.statGrid}>
-                <StatCard
-                  title="Total Articles"
-                  value={stats.total}
-                  subtitle={searchTerm.trim() ? "matching search" : `in ${category}`}
-                />
-                <StatCard title="Positive" value={stats.positive} accent="success"
-                  subtitle={`${pct(stats.positive, stats.total)}% of total`} />
-                <StatCard title="Neutral" value={stats.neutral} accent="secondary"
-                  subtitle={`${pct(stats.neutral, stats.total)}% of total`} />
-                <StatCard title="Negative" value={stats.negative} accent="danger"
-                  subtitle={`${pct(stats.negative, stats.total)}% of total`} />
-              </div>
-
-              <CategoryTabs
-                category={category}
-                setCategory={(c: string) => setCategory(c)}
-              />
+              <h1 className={styles.heading}>{title}</h1>
+<p className={styles.tagline}>{tagline}</p>
+              <CategoryTabs category={category} setCategory={setCategory} />
 
               <div className={styles.content}>
-                <div className={styles.articles}>
+                <div className={styles.feed}>
                   <ArticleList
                     articles={displayArticles}
                     saved={saved}
@@ -128,17 +80,23 @@ function App() {
                     category={category}
                   />
                 </div>
-                <div className={styles.feed}>
-                  <SavedSidebar saved={saved} />
+                <div className={styles.rail}>
+                  <SavedSidebar saved={saved} onRemove={handleSave} />
                 </div>
               </div>
             </>
           }
         />
-        <Route path="/analytics" element={<AnalyticsDashboard />} />
+        <Route
+          path="/analytics"
+          element={
+            <ErrorBoundary>
+              <AnalyticsDashboard />
+            </ErrorBoundary>
+          }
+        />
       </Routes>
- 
-    </div>
+    </Layout>
   );
 }
 

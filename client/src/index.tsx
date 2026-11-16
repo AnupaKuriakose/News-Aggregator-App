@@ -4,7 +4,8 @@ import './index.css';
 import App from './App';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-
+import "./styles/tokens.css"
+import { ThemeProvider } from './context/ThemeContext';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -20,9 +21,11 @@ const queryClient = new QueryClient({
 root.render(
   <React.StrictMode>
     <BrowserRouter>
+     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

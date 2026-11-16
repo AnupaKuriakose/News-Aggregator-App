@@ -9,23 +9,18 @@ export type SentimentStats = {
     pending: number;
 };
 
-export function useSentimentStats(articles: Article[]): SentimentStats {
-    return useMemo(() => {
-        const stats: SentimentStats = {
-            total: articles.length,
-            positive: 0,
-            neutral: 0,
-            negative: 0,
-            pending: 0
-        }
-
-        for (const a of articles) {
-            if (a.sentiment === "positive") stats.positive++;
-            else if (a.sentiment === "neutral") stats.neutral++;
-            else if (a.sentiment === "negative") stats.negative++;
-            else stats.pending++;
-        }
-        return stats;
-    }, [articles])
-
+export function computeSentimentStats(articles: Article[]): SentimentStats {
+  const stats: SentimentStats = { total: articles.length, positive: 0, neutral: 0, negative: 0, pending: 0 };
+  for (const a of articles) {
+    if (a.sentiment === "positive") stats.positive++;
+    else if (a.sentiment === "neutral") stats.neutral++;
+    else if (a.sentiment === "negative") stats.negative++;
+    else stats.pending++;
+  }
+  return stats;
 }
+
+export function useSentimentStats(articles: Article[]): SentimentStats {
+  return useMemo(() => computeSentimentStats(articles), [articles]);
+}
+
