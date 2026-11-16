@@ -203,7 +203,10 @@ This project demonstrates:
 
 ## 📸 Screenshots
 Home page - latest version
+Dark mode:
 ![alt text](image-3.png)
+Light mode:
+![alt text](image-4.png)
 Home page - v1
 ![alt text](image-1.png)
 
