@@ -199,12 +199,12 @@ This project demonstrates:
 ## 📌 Status
 
 🚧 Live Demo - click [here](https://news-aggregator-app-a7rg.vercel.app/)
-
 ---
 
 ## 📸 Screenshots
-
-Home page
+Home page - latest version
+![alt text](image-3.png)
+Home page - v1
 ![alt text](image-1.png)
 
 ---
